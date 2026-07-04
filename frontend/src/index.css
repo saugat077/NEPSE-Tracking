@@ -1,113 +1,118 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system: DESIGN.md — "Lumora Studio / Adaptive Revenue Interface"
- * Dark cinematic mode (single mode, per source), blue primary/accent,
- * Inter display+body, JetBrains Mono labels & figures, 8px radius language.
- * #BFEAFF (surface token) is used as the highlight/label tint — not as card
- * background, which would break white-text contrast.
+ * Design: ref.png — dark navy fintech dashboard.
+ * Near-black navy bg, elevated #111827-ish cards, #2563eb blue accent,
+ * green/red P&L, 12px card radius, sidebar shell with right rail.
+ * Inter for UI + figures (tabular), IBM Plex Mono for dense tables.
  */
 :root {
-  --background: #1c1c1d;
-  --foreground: #ffffff;
-  --card: #212123;
-  --card-foreground: #ffffff;
-  --popover: #232326;
-  --popover-foreground: #ffffff;
-  --primary: #2789d8;
-  --primary-foreground: #ffffff;
-  --secondary: #2a2a2b;
-  --secondary-foreground: #ffffff;
-  --muted: #232325;
-  --muted-foreground: #a1a1aa;
-  --accent: #0e2a40;
-  --accent-foreground: #bfeaff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #2a2a2b;
-  --input: #2a2a2b;
-  --ring: #50b0ff;
-  --success: #10b981;
-  --surface-highlight: #bfeaff;
-  --chart-1: #50b0ff;
-  --chart-2: #2789d8;
-  --chart-3: #8b7cf8;
-  --chart-4: #34d399;
-  --chart-5: #f59e0b;
-  --radius: 0.5rem; /* card/control 8px per DESIGN.md */
-  --sidebar: #161617;
-  --sidebar-foreground: #a1a1aa;
-  --sidebar-accent: #0e2a40;
-  --sidebar-accent-foreground: #bfeaff;
-  --sidebar-border: #2a2a2b;
-}
-
-/* Single dark mode — .dark mirrors :root so dark: utilities stay active */
-.dark {
+  --bg: #0a0e17;
+  --panel: #101624;
+  --panel2: #161d2e;
+  --border: #1e2637;
+  --border-soft: #1a2130;
+  --text: #e6e9f2;
+  --text2: #aab3c5;
+  --muted: #6f7a90;
+  --accent: #2563eb;
+  --accent-2: #3b82f6;
+  --accent-text: #ffffff;
+  --up: #22c55e;
+  --down: #ef4444;
+  --warn: #f59e0b;
+  --violet: #8b5cf6;
+  --teal: #14b8a6;
+  --hover: #182034;
+  --info: #93a5ff;
+  --radius: 12px;
   color-scheme: dark;
 }
 
+html.light {
+  --bg: #f2f5fa;
+  --panel: #ffffff;
+  --panel2: #f6f8fb;
+  --border: #dfe4ee;
+  --border-soft: #e9edf4;
+  --text: #10192b;
+  --text2: #3d4759;
+  --muted: #71809a;
+  --accent: #2563eb;
+  --accent-2: #1d4ed8;
+  --accent-text: #ffffff;
+  --up: #16a34a;
+  --down: #dc2626;
+  --warn: #d97706;
+  --violet: #7c3aed;
+  --teal: #0d9488;
+  --hover: #eaf0fa;
+  --info: #4a5ad8;
+  color-scheme: light;
+}
+
+/* shadcn token mapping (dialogs, inputs, selects inherit the theme) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--panel2);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-text);
+  --color-secondary: var(--panel2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--panel2);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--down);
+  --color-destructive-foreground: #ffffff;
   --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-success: var(--success);
-  --color-surface-highlight: var(--surface-highlight);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-  }
-  /* Ambient atmosphere — CSS-only supporting layer behind the interface */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(600px 400px at 85% -10%, rgba(39, 137, 216, 0.16), transparent 70%),
-      radial-gradient(500px 500px at -10% 40%, rgba(80, 176, 255, 0.07), transparent 70%),
-      radial-gradient(700px 500px at 60% 110%, rgba(139, 124, 248, 0.06), transparent 70%);
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -115,53 +120,131 @@
   }
 }
 
-/* Tabular figures for money/data columns so numbers align and don't shift */
 .tnum {
   font-variant-numeric: tabular-nums;
 }
 
-/* label-md from DESIGN.md: 12px semibold mono, used for metric labels */
-.label-mono {
-  font-family: var(--font-mono);
+/* small muted label */
+.tlabel {
   font-size: 12px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
+  font-weight: 500;
+  color: var(--muted);
 }
 
-/* Motion: restrained hover lift + staggered entrance (transform/opacity only) */
-@media (prefers-reduced-motion: no-preference) {
-  .lift {
-    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 200ms ease-out;
-  }
-  .lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(80, 176, 255, 0.12);
-  }
+/* panel + section header */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.panel-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
 
-  @keyframes rise-in {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+/* status badge (transaction types, verdicts, ranks, deltas) */
+.tbadge {
+  display: inline-block;
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tbadge-up { background: color-mix(in srgb, var(--up) 14%, transparent); color: var(--up); }
+.tbadge-down { background: color-mix(in srgb, var(--down) 14%, transparent); color: var(--down); }
+.tbadge-accent { background: color-mix(in srgb, var(--accent) 16%, transparent); color: color-mix(in srgb, var(--accent-2) 70%, var(--text)); }
+.tbadge-info { background: color-mix(in srgb, var(--info) 16%, transparent); color: var(--info); }
+.tbadge-outline { border: 1px solid var(--border); color: var(--muted); }
+.tbadge-solid-down { background: var(--down); color: #fff; }
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* underline tab (secondary tabs, chart periods) */
+.tab-underline {
+  position: relative;
+  padding: 10px 2px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: color 120ms ease-out;
+}
+.tab-underline:hover {
+  color: var(--text);
+}
+.tab-underline[data-active="true"] {
+  color: var(--text);
+}
+.tab-underline[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* sidebar nav item (ref.png: filled blue pill when active) */
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text2);
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+.side-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.side-item[data-active="true"] {
+  background: var(--accent);
+  color: #ffffff;
+}
+.side-item[data-active="true"]:hover {
+  background: var(--accent-2);
+}
+
+/* Bloomberg-style price tape: track holds two copies of the items and
+   slides half its own width for a seamless infinite loop */
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll var(--ticker-duration, 40s) linear infinite;
+}
+.ticker-tape:hover .ticker-track {
+  animation-play-state: paused;
+}
+@keyframes ticker-scroll {
+  to {
+    transform: translateX(-50%);
   }
-  .stagger > * {
-    animation: rise-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
   }
-  .stagger > *:nth-child(1) { animation-delay: 0ms; }
-  .stagger > *:nth-child(2) { animation-delay: 40ms; }
-  .stagger > *:nth-child(3) { animation-delay: 80ms; }
-  .stagger > *:nth-child(4) { animation-delay: 120ms; }
-  .stagger > *:nth-child(5) { animation-delay: 160ms; }
-  .stagger > *:nth-child(6) { animation-delay: 200ms; }
-  .stagger > *:nth-child(7) { animation-delay: 240ms; }
-  .stagger > *:nth-child(8) { animation-delay: 280ms; }
+}
+
+/* colored icon tile on KPI cards */
+.kpi-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
 }
