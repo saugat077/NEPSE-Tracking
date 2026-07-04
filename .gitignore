@@ -1,0 +1,31 @@
+# Database — personal portfolio data, never push
+backend/portfolio.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Excel export with real transactions/holdings — same data as the DB
+NepsePortfolioTracker.md
+
+# Personal project docs — keep local only
+Plan.md
+CLAUDE.md
+README.md
+
+
+# Python
+backend/.venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node / frontend build
+node_modules/
+frontend/dist/
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system: DESIGN.md — "Lumora Studio / Adaptive Revenue Interface"
+ * Dark cinematic mode (single mode, per source), blue primary/accent,
+ * Inter display+body, JetBrains Mono labels & figures, 8px radius language.
+ * #BFEAFF (surface token) is used as the highlight/label tint — not as card
+ * background, which would break white-text contrast.
+ */
+:root {
+  --background: #1c1c1d;
+  --foreground: #ffffff;
+  --card: #212123;
+  --card-foreground: #ffffff;
+  --popover: #232326;
+  --popover-foreground: #ffffff;
+  --primary: #2789d8;
+  --primary-foreground: #ffffff;
+  --secondary: #2a2a2b;
+  --secondary-foreground: #ffffff;
+  --muted: #232325;
+  --muted-foreground: #a1a1aa;
+  --accent: #0e2a40;
+  --accent-foreground: #bfeaff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #2a2a2b;
+  --input: #2a2a2b;
+  --ring: #50b0ff;
+  --success: #10b981;
+  --surface-highlight: #bfeaff;
+  --chart-1: #50b0ff;
+  --chart-2: #2789d8;
+  --chart-3: #8b7cf8;
+  --chart-4: #34d399;
+  --chart-5: #f59e0b;
+  --radius: 0.5rem; /* card/control 8px per DESIGN.md */
+  --sidebar: #161617;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-accent: #0e2a40;
+  --sidebar-accent-foreground: #bfeaff;
+  --sidebar-border: #2a2a2b;
+}
+
+/* Single dark mode — .dark mirrors :root so dark: utilities stay active */
+.dark {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-surface-highlight: var(--surface-highlight);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  /* Ambient atmosphere — CSS-only supporting layer behind the interface */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(600px 400px at 85% -10%, rgba(39, 137, 216, 0.16), transparent 70%),
+      radial-gradient(500px 500px at -10% 40%, rgba(80, 176, 255, 0.07), transparent 70%),
+      radial-gradient(700px 500px at 60% 110%, rgba(139, 124, 248, 0.06), transparent 70%);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Tabular figures for money/data columns so numbers align and don't shift */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* label-md from DESIGN.md: 12px semibold mono, used for metric labels */
+.label-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* Motion: restrained hover lift + staggered entrance (transform/opacity only) */
+@media (prefers-reduced-motion: no-preference) {
+  .lift {
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 200ms ease-out;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(80, 176, 255, 0.12);
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .stagger > * {
+    animation: rise-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .stagger > *:nth-child(8) { animation-delay: 280ms; }
+}
