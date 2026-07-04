@@ -1,19 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { toast } from 'sonner'
 import { api } from '@/api'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -33,14 +21,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import PageHeader from '@/components/PageHeader'
+import { cn } from '@/lib/utils'
 
-// DESIGN.md blue-led categorical palette (matches Dashboard)
-const CHART_COLORS = [
-  '#50b0ff', '#2789d8', '#8b7cf8', '#34d399', '#f59e0b', '#f472b6', '#22d3ee',
-  '#a78bfa', '#facc15', '#fb7185', '#2dd4bf', '#93c5fd', '#e879f9', '#bef264',
-  '#fdba74', '#67e8f9', '#f9a8d4', '#86efac', '#c4b5fd',
-]
-const AXIS_TICK = { fontSize: 12, fill: '#a1a1aa' }
+function rankBadge(rank, total) {
+  if (rank == null) return 'tbadge-outline'
+  if (rank <= 3) return 'tbadge-up'
+  if (rank > total - 3) return 'tbadge-down'
+  return 'tbadge-outline'
+}
 
 export default function RankHistory() {
   const [rows, setRows] = useState([])
@@ -54,26 +42,27 @@ export default function RankHistory() {
   }, [])
 
   const quarters = useMemo(() => [...new Set(rows.map((r) => r.quarter))].sort(), [rows])
-  const symbols = useMemo(() => [...new Set(rows.map((r) => r.symbol))].sort(), [rows])
-  const byKey = useMemo(() => {
-    const m = {}
-    for (const r of rows) m[`${r.symbol}|${r.quarter}`] = r
-    return m
-  }, [rows])
+  const latest = quarters[quarters.length - 1]
+  const prev = quarters[quarters.length - 2]
+  const maxScore = Math.max(1, ...rows.map((r) => r.score))
 
-  // rank trend: one line per bank, lower rank = better (reversed axis)
-  const trendData = useMemo(
-    () =>
-      quarters.map((q) => {
-        const point = { quarter: q }
-        for (const s of symbols) {
-          const r = byKey[`${s}|${q}`]
-          if (r) point[s] = r.rank
-        }
-        return point
-      }),
-    [quarters, symbols, byKey],
-  )
+  const banks = useMemo(() => {
+    const bySym = {}
+    for (const r of rows) {
+      bySym[r.symbol] = bySym[r.symbol] || {}
+      bySym[r.symbol][r.quarter] = r
+    }
+    const list = Object.entries(bySym).map(([symbol, byQ]) => ({
+      symbol,
+      byQ,
+      rank: byQ[latest]?.rank ?? null,
+      delta: byQ[latest] && prev && byQ[prev] ? byQ[prev].rank - byQ[latest].rank : null,
+    }))
+    list.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || a.symbol.localeCompare(b.symbol))
+    return list
+  }, [rows, latest, prev])
+
+  const latestCount = rows.filter((r) => r.quarter === latest).length
 
   const save = async (e) => {
     e.preventDefault()
@@ -97,122 +86,128 @@ export default function RankHistory() {
     }
   }
 
+  const thCls =
+    'h-auto px-3 py-[9px] font-mono text-[9px] font-medium uppercase tracking-[1.5px] text-[color:var(--muted)]'
+
   return (
     <>
       <PageHeader
         title="Rank History"
-        description="Enter each bank's composite score per quarter — rank is computed by sorting scores within the quarter."
+        description="Composite score per bank per quarter · rank by sorted score"
         action={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="size-4" /> Add / update score
+          <Button
+            onClick={() => setOpen(true)}
+           
+          >
+            + Add / Update Score
           </Button>
         }
       />
 
       {!rows.length ? (
-        <div className="rounded-lg border border-dashed bg-card px-6 py-14 text-center">
-          <p className="font-medium">No scores yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add composite scores per bank per quarter; ranks and the trend chart build themselves.
+        <div className="border border-dashed bg-[color:var(--panel)] px-6 py-14 text-center">
+          <p className="font-mono text-[12px] font-semibold uppercase tracking-[1.5px]">No scores yet</p>
+          <p className="mt-2 font-mono text-[10.5px] uppercase text-[color:var(--muted)]">
+            Add composite scores per bank per quarter; ranks and trend bars build themselves
           </p>
-          <Button className="mt-4" onClick={() => setOpen(true)}>
-            <Plus className="size-4" /> Add first score
+          <Button
+            className="mt-4"
+            onClick={() => setOpen(true)}
+          >
+            + Add First Score
           </Button>
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="overflow-x-auto rounded-lg border bg-card">
-            <Table>
+        <>
+          <div className="panel overflow-x-auto">
+            <Table className="font-mono text-[11.5px]">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Bank</TableHead>
+                <TableRow className="border-b hover:bg-transparent">
+                  <TableHead className={cn(thCls, 'text-center')}>Rank</TableHead>
+                  <TableHead className={thCls}>Bank</TableHead>
                   {quarters.map((q) => (
-                    <TableHead key={q} className="text-right whitespace-nowrap">
+                    <TableHead key={q} className={cn(thCls, 'whitespace-nowrap text-right')}>
                       {q}
                     </TableHead>
                   ))}
+                  <TableHead className={cn(thCls, 'pl-5')}>Trend</TableHead>
+                  <TableHead className={cn(thCls, 'text-right')}>Δ Rank</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {symbols.map((sym) => (
-                  <TableRow key={sym}>
-                    <TableCell className="font-mono font-semibold">{sym}</TableCell>
-                    {quarters.map((q) => {
-                      const r = byKey[`${sym}|${q}`]
+                {banks.map((b) => (
+                  <TableRow
+                    key={b.symbol}
+                    className="border-b border-[color:var(--border-soft)] hover:bg-[color:var(--hover)]"
+                  >
+                    <TableCell className="px-3 py-2 text-center">
+                      <span className={cn('tbadge', rankBadge(b.rank, latestCount))}>
+                        {b.rank ?? '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-3 py-2 font-semibold">{b.symbol}</TableCell>
+                    {quarters.map((q, i) => {
+                      const r = b.byQ[q]
+                      const isLatest = i === quarters.length - 1
                       return (
-                        <TableCell key={q} className="tnum text-right font-mono">
-                          {r ? (
-                            <span>
-                              <span className="mr-1.5 inline-flex size-5 items-center justify-center rounded bg-secondary text-xs font-semibold">
-                                {r.rank}
-                              </span>
-                              {r.score.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
+                        <TableCell
+                          key={q}
+                          className={cn(
+                            'tnum whitespace-nowrap px-3 py-2 text-right',
+                            isLatest ? 'font-semibold' : 'text-[color:var(--text2)]',
                           )}
+                        >
+                          {r ? r.score.toFixed(2) : '—'}
                         </TableCell>
                       )
                     })}
+                    <TableCell className="px-3 py-2 pl-5">
+                      <div className="flex h-4 items-end gap-[3px]">
+                        {quarters.map((q, i) => {
+                          const r = b.byQ[q]
+                          const isLatest = i === quarters.length - 1
+                          return (
+                            <div
+                              key={q}
+                              className="w-[5px]"
+                              style={{
+                                height: r ? `${Math.max(12, (r.score / maxScore) * 100)}%` : '2px',
+                                background: r
+                                  ? isLatest
+                                    ? 'var(--accent)'
+                                    : 'var(--muted)'
+                                  : 'var(--border-soft)',
+                              }}
+                            />
+                          )
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'tnum px-3 py-2 text-right font-semibold',
+                        b.delta > 0 ? 'up' : b.delta < 0 ? 'down' : 'text-[color:var(--muted)]',
+                      )}
+                    >
+                      {b.delta == null ? '—' : b.delta > 0 ? `▲ ${b.delta}` : b.delta < 0 ? `▼ ${-b.delta}` : '0'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Badge = computed rank within the quarter · number = entered composite score.
+          <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.5px] text-[color:var(--muted)]">
+            Rank = position in {latest} · Δ vs {prev || '—'} · bars show score by quarter
           </p>
-
-          {quarters.length > 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Rank Trend (1 = best)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="quarter" tick={AXIS_TICK} />
-                    <YAxis
-                      reversed
-                      allowDecimals={false}
-                      domain={[1, Math.max(symbols.length, 2)]}
-                      tick={AXIS_TICK}
-                      width={30}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--popover)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        color: 'var(--popover-foreground)',
-                      }}
-                      labelStyle={{ color: 'var(--muted-foreground)' }}
-                    />
-                    <Legend />
-                    {symbols.map((s, i) => (
-                      <Line
-                        key={s}
-                        type="monotone"
-                        dataKey={s}
-                        stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                        connectNulls
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add / update score</DialogTitle>
+            <DialogTitle className="font-mono text-[13px] uppercase tracking-[2px]">
+              Add / Update Score
+            </DialogTitle>
             <DialogDescription>
               Upserts by bank + quarter; the quarter's ranks are recomputed on save.
             </DialogDescription>
@@ -256,11 +251,11 @@ export default function RankHistory() {
                 value={form.score}
                 onChange={(e) => setForm({ ...form, score: e.target.value })}
                 inputMode="decimal"
-                placeholder="72.50"
+                placeholder="7.25"
                 required
                 className="font-mono"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[color:var(--muted)]">
                 Higher score = better rank within the quarter.
               </p>
             </div>
@@ -268,8 +263,12 @@ export default function RankHistory() {
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Saving…' : 'Save score'}
+              <Button
+                type="submit"
+                disabled={saving}
+               
+              >
+                {saving ? 'Saving…' : 'Save Score'}
               </Button>
             </DialogFooter>
           </form>

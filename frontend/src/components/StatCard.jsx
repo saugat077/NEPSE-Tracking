@@ -1,35 +1,21 @@
-import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 /**
- * Dashboard stat tile. `tone` colors the value: 'auto' colors by sign,
- * 'neutral' leaves it in foreground color.
+ * Terminal stat cell — flat panel tile for the 1px-gap stat grid.
+ * `tone` 'auto' colors the value by sign of rawValue; 'dim' mutes it.
  */
-export default function StatCard({ label, value, sub, icon: Icon, tone = 'neutral', rawValue = 0 }) {
-  const signClass =
-    tone === 'auto'
-      ? rawValue > 0
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : rawValue < 0
-          ? 'text-red-600 dark:text-red-400'
-          : ''
-      : ''
+export default function StatCard({ label, value, sub, tone = 'neutral', rawValue = 0 }) {
+  const valueClass =
+    tone === 'auto' ? (rawValue > 0 ? 'up' : rawValue < 0 ? 'down' : '') : tone === 'dim' ? 'text-[color:var(--text2)]' : ''
   return (
-    <Card className="lift">
-      <CardContent className="flex items-start justify-between gap-3 p-5">
-        <div className="min-w-0">
-          <p className="label-mono">{label}</p>
-          <p className={cn('tnum mt-2 truncate font-mono text-2xl font-medium', signClass)}>
-            {value}
-          </p>
-          {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
-        </div>
-        {Icon ? (
-          <div className="rounded-md bg-accent p-2 text-accent-foreground">
-            <Icon className="size-5" aria-hidden="true" />
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
+    <div className="bg-[color:var(--panel)] px-3.5 py-3">
+      <div className="tlabel mb-1.5">{label}</div>
+      <div className={cn('tnum truncate font-mono text-base font-semibold tracking-[0.3px]', valueClass)}>
+        {value}
+      </div>
+      <div className="tnum mt-[3px] min-h-3 font-mono text-[10px] uppercase text-[color:var(--muted)]">
+        {sub || ''}
+      </div>
+    </div>
   )
 }

@@ -9,29 +9,33 @@ import {
 import { cn } from '@/lib/utils'
 
 /**
- * Generic data table.
- * columns: [{ key, label, align ('right'|'left'), render(row), cellClass }]
- * `empty` is shown when rows is empty. `footer` is an optional <TableRow>.
+ * Terminal data table: dense mono figures, 9px letter-spaced uppercase headers,
+ * soft row separators, hover highlight.
+ * columns: [{ key, label, align, render(row), cellClass }]
  */
 export default function DataTable({ columns, rows, rowKey = 'id', empty, footer }) {
   if (!rows.length && empty) {
     return (
-      <div className="rounded-lg border border-dashed bg-card px-6 py-14 text-center">
-        <p className="font-medium">{empty.title}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{empty.hint}</p>
+      <div className="rounded-[6px] border border-dashed bg-[color:var(--panel)] px-6 py-14 text-center">
+        <p className="text-sm font-semibold">{empty.title}</p>
+        <p className="mt-1.5 text-xs text-[color:var(--muted)]">{empty.hint}</p>
         {empty.action}
       </div>
     )
   }
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
-      <Table>
+    <div className="panel overflow-x-auto">
+      <Table className="font-mono text-xs">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow className="border-b hover:bg-transparent">
             {columns.map((c) => (
               <TableHead
                 key={c.key}
-                className={cn('whitespace-nowrap', c.align === 'right' && 'text-right')}
+                className={cn(
+                  'h-auto whitespace-nowrap px-3 py-2.5 font-sans text-[11px] font-medium text-[color:var(--muted)]',
+                  c.align === 'right' && 'text-right',
+                  c.align === 'center' && 'text-center',
+                )}
               >
                 {c.label}
               </TableHead>
@@ -40,13 +44,17 @@ export default function DataTable({ columns, rows, rowKey = 'id', empty, footer 
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row[rowKey]}>
+            <TableRow
+              key={row[rowKey]}
+              className="border-b border-[color:var(--border-soft)] hover:bg-[color:var(--hover)]"
+            >
               {columns.map((c) => (
                 <TableCell
                   key={c.key}
                   className={cn(
-                    'whitespace-nowrap',
-                    c.align === 'right' && 'tnum text-right font-mono',
+                    'whitespace-nowrap px-3 py-2',
+                    c.align === 'right' && 'tnum text-right',
+                    c.align === 'center' && 'text-center',
                     typeof c.cellClass === 'function' ? c.cellClass(row) : c.cellClass,
                   )}
                 >
@@ -63,7 +71,11 @@ export default function DataTable({ columns, rows, rowKey = 'id', empty, footer 
 }
 
 export function plClass(v) {
-  if (v > 0) return 'text-emerald-600 dark:text-emerald-400'
-  if (v < 0) return 'text-red-600 dark:text-red-400'
+  if (v > 0) return 'up font-semibold'
+  if (v < 0) return 'down font-semibold'
   return ''
+}
+
+export function signed(v, formatted) {
+  return `${v >= 0 ? '+' : ''}${formatted}`
 }

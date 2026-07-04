@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api, fmt } from '@/api'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -28,11 +28,11 @@ import { cn } from '@/lib/utils'
 
 const TYPES = ['BUY', 'SELL', 'BONUS', 'RIGHT', 'IPO']
 const TYPE_BADGE = {
-  BUY: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-  SELL: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
-  BONUS: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300',
-  RIGHT: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
-  IPO: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+  BUY: 'tbadge-up',
+  SELL: 'tbadge-down',
+  BONUS: 'tbadge-accent',
+  RIGHT: 'tbadge-info',
+  IPO: 'tbadge-info',
 }
 
 const EMPTY_FORM = { date: '', stock_id: '', type: 'BUY', quantity: '', price: '', notes: '' }
@@ -60,6 +60,15 @@ export default function Transactions() {
   useEffect(() => {
     load()
   }, [])
+
+  // "Add transaction" from the portfolio header lands here with ?add=1
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('add')) {
+      setOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Live fee preview — mirrors Excel's auto-calculated fee columns
   useEffect(() => {
@@ -123,31 +132,28 @@ export default function Transactions() {
     }
   }
 
+  const dim = 'text-[color:var(--text2)]'
   const columns = [
-    { key: 'date', label: 'Date (BS)', render: (t) => <span className="font-mono text-sm">{t.date}</span> },
-    { key: 'symbol', label: 'Symbol', render: (t) => <span className="font-mono font-semibold">{t.symbol}</span> },
+    { key: 'date', label: 'Date · BS', cellClass: dim, render: (t) => t.date },
+    { key: 'symbol', label: 'Symbol', render: (t) => <span className="font-semibold">{t.symbol}</span> },
     {
       key: 'type',
       label: 'Type',
-      render: (t) => (
-        <Badge variant="outline" className={cn('border-transparent', TYPE_BADGE[t.type])}>
-          {t.type}
-        </Badge>
-      ),
+      render: (t) => <span className={cn('tbadge', TYPE_BADGE[t.type])}>{t.type}</span>,
     },
     { key: 'quantity', label: 'Qty', align: 'right', render: (t) => fmt.qty(t.quantity) },
-    { key: 'price', label: 'Price', align: 'right', render: (t) => fmt.money(t.price) },
-    { key: 'gross', label: 'Gross', align: 'right', render: (t) => fmt.money(t.gross) },
-    { key: 'commission', label: 'Commission', align: 'right', render: (t) => fmt.money(t.commission) },
-    { key: 'sebon_fee', label: 'SEBON', align: 'right', render: (t) => fmt.money(t.sebon_fee) },
-    { key: 'dp_fee', label: 'DP', align: 'right', render: (t) => fmt.money(t.dp_fee) },
+    { key: 'price', label: 'Rate', align: 'right', render: (t) => (t.price ? fmt.money(t.price) : '—') },
+    { key: 'gross', label: 'Gross', align: 'right', cellClass: dim, render: (t) => (t.gross ? fmt.money(t.gross) : '—') },
+    { key: 'commission', label: 'Commission', align: 'right', cellClass: dim, render: (t) => (t.commission ? fmt.money(t.commission) : '—') },
+    { key: 'sebon_fee', label: 'SEBON', align: 'right', cellClass: dim, render: (t) => (t.sebon_fee ? fmt.money(t.sebon_fee) : '—') },
+    { key: 'dp_fee', label: 'DP', align: 'right', cellClass: dim, render: (t) => (t.dp_fee ? fmt.money(t.dp_fee) : '—') },
     {
       key: 'net_amount',
-      label: 'Net Amount',
+      label: 'Net · Rs',
       align: 'right',
       render: (t) => <span className="font-semibold">{fmt.money(t.net_amount)}</span>,
     },
-    { key: 'notes', label: 'Notes', render: (t) => <span className="text-sm text-muted-foreground">{t.notes}</span> },
+    { key: 'notes', label: 'Notes', cellClass: 'font-sans text-xs text-[color:var(--muted)]', render: (t) => t.notes },
     {
       key: 'actions',
       label: '',
@@ -170,16 +176,20 @@ export default function Transactions() {
     <>
       <PageHeader
         title="Transactions"
-        description="All buys, sells, bonuses, rights and IPOs. Fees are computed automatically on save."
+        description="Fees computed on save · slab-based commission"
         action={
-          <Button onClick={() => setOpen(true)} disabled={!stocks.length}>
-            <Plus className="size-4" /> Add Transaction
+          <Button
+            onClick={() => setOpen(true)}
+            disabled={!stocks.length}
+           
+          >
+            + New Entry
           </Button>
         }
       />
       {!stocks.length && (
-        <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
-          Add a stock on the Stocks page first — transactions reference the stock master.
+        <p className="mb-4 border border-[color:var(--accent)]/40 bg-[color:var(--panel)] px-4 py-3 font-mono text-[10.5px] uppercase tracking-[0.5px] text-[color:var(--accent)]">
+          Add a stock on the Stocks page first — transactions reference the stock master
         </p>
       )}
       <DataTable

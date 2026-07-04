@@ -100,12 +100,20 @@ export default function Stocks() {
   }
 
   const columns = [
-    { key: 'symbol', label: 'Symbol', render: (s) => <span className="font-mono font-semibold">{s.symbol}</span> },
-    { key: 'company', label: 'Company' },
-    { key: 'sector', label: 'Sector' },
+    { key: 'symbol', label: 'Symbol', render: (s) => <span className="font-semibold">{s.symbol}</span> },
+    {
+      key: 'company',
+      label: 'Company',
+      cellClass: 'font-sans text-xs text-[color:var(--text2)]',
+    },
+    {
+      key: 'sector',
+      label: 'Sector',
+      render: (s) => (s.sector ? <span className="tbadge tbadge-outline">{s.sector}</span> : '—'),
+    },
     {
       key: 'current_price',
-      label: 'Current Price (Rs)',
+      label: 'LTP',
       align: 'right',
       render: (s) =>
         priceEdit?.id === s.id ? (
@@ -128,7 +136,7 @@ export default function Stocks() {
               aria-label={`Price date (BS) for ${s.symbol}`}
             />
             <Button size="icon" variant="ghost" className="size-8" onClick={savePrice} aria-label="Save price">
-              <Check className="size-4 text-emerald-600" />
+              <Check className="up size-4" />
             </Button>
             <Button size="icon" variant="ghost" className="size-8" onClick={() => setPriceEdit(null)} aria-label="Cancel">
               <X className="size-4" />
@@ -136,7 +144,7 @@ export default function Stocks() {
           </span>
         ) : (
           <button
-            className="rounded px-1 underline decoration-dotted underline-offset-4 hover:bg-secondary"
+            className="border-b border-dashed border-[color:var(--accent)] font-semibold text-[color:var(--accent)] hover:bg-[color:var(--hover)]"
             onClick={() =>
               setPriceEdit({ id: s.id, price: String(s.current_price ?? 0), date: s.price_updated || '' })
             }
@@ -146,7 +154,12 @@ export default function Stocks() {
           </button>
         ),
     },
-    { key: 'price_updated', label: 'Price Date (BS)', render: (s) => s.price_updated || '—' },
+    {
+      key: 'price_updated',
+      label: 'Updated · BS',
+      cellClass: 'text-[color:var(--muted)]',
+      render: (s) => s.price_updated || '—',
+    },
     {
       key: 'actions',
       label: '',
@@ -174,10 +187,13 @@ export default function Stocks() {
     <>
       <PageHeader
         title="Stocks & Prices"
-        description="Stock master list — click a price to update it manually."
+        description="Click LTP to update inline"
         action={
-          <Button onClick={openAdd}>
-            <Plus className="size-4" /> Add Stock
+          <Button
+            onClick={openAdd}
+           
+          >
+            + Add Stock
           </Button>
         }
       />

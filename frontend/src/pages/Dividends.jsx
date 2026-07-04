@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api, fmt } from '@/api'
 import { Button } from '@/components/ui/button'
+import { TableCell, TableRow } from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -96,26 +97,28 @@ export default function Dividends() {
     }
   }
 
+  const dim = 'text-[color:var(--text2)]'
   const columns = [
-    { key: 'date', label: 'Date (BS)', render: (d) => <span className="font-mono text-sm">{d.date}</span> },
-    { key: 'symbol', label: 'Symbol', render: (d) => <span className="font-mono font-semibold">{d.symbol}</span> },
-    { key: 'fiscal_year', label: 'Fiscal Year' },
+    { key: 'date', label: 'Date · BS', cellClass: dim, render: (d) => d.date },
+    { key: 'symbol', label: 'Symbol', render: (d) => <span className="font-semibold">{d.symbol}</span> },
+    { key: 'fiscal_year', label: 'Fiscal Year', cellClass: dim },
     {
       key: 'div_rate',
-      label: 'Rate',
+      label: 'Cash Rate %',
       align: 'right',
       render: (d) => `${(d.div_rate * 100).toFixed(2)}%`,
     },
-    { key: 'shares', label: 'Shares', align: 'right', render: (d) => fmt.qty(d.shares) },
-    { key: 'gross', label: 'Gross', align: 'right', render: (d) => fmt.money(d.gross) },
-    { key: 'tds', label: 'TDS (5%)', align: 'right', render: (d) => fmt.money(d.tds) },
+    { key: 'shares', label: 'Shares', align: 'right', cellClass: dim, render: (d) => fmt.qty(d.shares) },
+    { key: 'gross', label: 'Gross · Rs', align: 'right', render: (d) => fmt.money(d.gross) },
+    { key: 'tds', label: 'TDS 5%', align: 'right', cellClass: 'down', render: (d) => fmt.money(d.tds) },
     {
       key: 'net',
-      label: 'Net',
+      label: 'Net · Rs',
       align: 'right',
+      cellClass: 'up',
       render: (d) => <span className="font-semibold">{fmt.money(d.net)}</span>,
     },
-    { key: 'notes', label: 'Notes', render: (d) => <span className="text-sm text-muted-foreground">{d.notes}</span> },
+    { key: 'notes', label: 'Notes', cellClass: 'font-sans text-xs text-[color:var(--muted)]', render: (d) => d.notes },
     {
       key: 'actions',
       label: '',
@@ -138,10 +141,14 @@ export default function Dividends() {
     <>
       <PageHeader
         title="Dividends"
-        description="Cash dividends received. Gross = rate × Rs 100 par × shares, minus 5% TDS."
+        description="Gross = rate × Rs 100 par × shares · 5% TDS"
         action={
-          <Button onClick={() => setOpen(true)} disabled={!stocks.length}>
-            <Plus className="size-4" /> Add Dividend
+          <Button
+            onClick={() => setOpen(true)}
+            disabled={!stocks.length}
+           
+          >
+            + Record Dividend
           </Button>
         }
       />
@@ -150,8 +157,32 @@ export default function Dividends() {
         rows={dividends}
         empty={{
           title: 'No dividends recorded',
-          hint: 'Record cash dividends as they are credited; net amounts feed the dashboard.',
+          hint: 'Record cash dividends as they are credited; net amounts feed the dashboard',
         }}
+        footer={
+          dividends.length ? (
+            <TableRow className="bg-[color:var(--panel2)] hover:bg-[color:var(--panel2)]">
+              <TableCell className="px-3 py-[9px] text-[10px] font-bold uppercase tracking-[1px]">
+                Total
+              </TableCell>
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell className="tnum px-3 py-[9px] text-right font-semibold">
+                {fmt.money(dividends.reduce((a, d) => a + d.gross, 0))}
+              </TableCell>
+              <TableCell className="tnum down px-3 py-[9px] text-right font-semibold">
+                {fmt.money(dividends.reduce((a, d) => a + d.tds, 0))}
+              </TableCell>
+              <TableCell className="tnum up px-3 py-[9px] text-right font-bold">
+                {fmt.money(dividends.reduce((a, d) => a + d.net, 0))}
+              </TableCell>
+              <TableCell />
+              <TableCell />
+            </TableRow>
+          ) : null
+        }
       />
 
       <Dialog

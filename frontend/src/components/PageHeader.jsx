@@ -1,9 +1,12 @@
+/** Page header: title + muted note + action (pages are top-level in the sidebar shell). */
 export default function PageHeader({ title, description, action }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-medium leading-tight tracking-tight">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+        <h1 className="text-[22px] font-bold tracking-[-0.3px]">{title}</h1>
+        {description ? (
+          <p className="mt-0.5 text-[12.5px] text-[color:var(--muted)]">{description}</p>
+        ) : null}
       </div>
       {action}
     </div>
