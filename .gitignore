@@ -10,8 +10,8 @@ NepsePortfolioTracker.md
 # Personal project docs — keep local only
 Plan.md
 CLAUDE.md
-README.md
-
+NEPSE Terminal.html
+ref.png
 
 # Python
 backend/.venv/
@@ -23,6 +23,9 @@ __pycache__/
 # Node / frontend build
 node_modules/
 frontend/dist/
+
+# Crash dumps
+*.stackdump
 
 # Editor / OS noise
 .vscode/
