@@ -1,9 +1,18 @@
 from flask import Blueprint, jsonify
 
 from db import get_db
-from holdings import compute_dashboard, compute_holdings
+from holdings import compute_dashboard, compute_holdings, value_history
 
 bp = Blueprint("portfolio", __name__, url_prefix="/api")
+
+
+@bp.get("/history")
+def history():
+    conn = get_db()
+    try:
+        return jsonify(value_history(conn))
+    finally:
+        conn.close()
 
 
 @bp.get("/holdings")

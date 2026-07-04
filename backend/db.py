@@ -15,10 +15,27 @@ def get_db():
 
 
 def init_db():
-    """Create tables from schema.sql if they don't exist (idempotent)."""
+    """Create tables from schema.sql if they don't exist (idempotent) + migrate."""
     conn = get_db()
     try:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        _migrate(conn)
         conn.commit()
     finally:
         conn.close()
+
+
+def _migrate(conn):
+    """In-place upgrades for databases created before newer columns existed."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(stocks)")}
+    if "prev_price" not in cols:
+        conn.execute("ALTER TABLE stocks ADD COLUMN prev_price REAL NOT NULL DEFAULT 0")
+
+    # seed price_history from current prices so the value chart has a first point
+    empty = conn.execute("SELECT COUNT(*) AS c FROM price_history").fetchone()["c"] == 0
+    if empty:
+        conn.execute(
+            """INSERT OR IGNORE INTO price_history (stock_id, date, price)
+               SELECT id, price_updated, current_price FROM stocks
+               WHERE current_price > 0 AND price_updated IS NOT NULL AND price_updated != ''"""
+        )

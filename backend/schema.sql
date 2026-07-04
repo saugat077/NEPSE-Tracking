@@ -7,7 +7,17 @@ CREATE TABLE IF NOT EXISTS stocks (
     company       TEXT NOT NULL DEFAULT '',
     sector        TEXT NOT NULL DEFAULT '',
     current_price REAL NOT NULL DEFAULT 0,
+    prev_price    REAL NOT NULL DEFAULT 0,   -- price before the latest update (day change)
     price_updated TEXT
+);
+
+-- one snapshot per stock per BS date, written on every manual price update
+CREATE TABLE IF NOT EXISTS price_history (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    stock_id INTEGER NOT NULL REFERENCES stocks(id),
+    date     TEXT NOT NULL,
+    price    REAL NOT NULL,
+    UNIQUE (stock_id, date)
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -63,3 +73,4 @@ CREATE TABLE IF NOT EXISTS rank_scores (
 
 CREATE INDEX IF NOT EXISTS idx_transactions_stock ON transactions(stock_id);
 CREATE INDEX IF NOT EXISTS idx_dividends_stock    ON dividends(stock_id);
+CREATE INDEX IF NOT EXISTS idx_price_history_stock ON price_history(stock_id, date);

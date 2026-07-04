@@ -97,14 +97,23 @@ def update_price(stock_id):
         return jsonify({"error": "price_updated must be a BS date like 2083-01-31"}), 400
     conn = get_db()
     try:
+        old = conn.execute("SELECT * FROM stocks WHERE id = ?", (stock_id,)).fetchone()
+        if not old:
+            return jsonify({"error": "Stock not found"}), 404
+        # keep the previous price for day-change; snapshot history per BS date
+        prev = old["current_price"] if price != old["current_price"] else old["prev_price"]
         conn.execute(
-            "UPDATE stocks SET current_price = ?, price_updated = ? WHERE id = ?",
-            (price, price_updated, stock_id),
+            "UPDATE stocks SET current_price = ?, prev_price = ?, price_updated = ? WHERE id = ?",
+            (price, prev, price_updated, stock_id),
         )
+        if price_updated and price > 0:
+            conn.execute(
+                """INSERT INTO price_history (stock_id, date, price) VALUES (?, ?, ?)
+                   ON CONFLICT(stock_id, date) DO UPDATE SET price = excluded.price""",
+                (stock_id, price_updated, price),
+            )
         conn.commit()
         row = conn.execute("SELECT * FROM stocks WHERE id = ?", (stock_id,)).fetchone()
-        if not row:
-            return jsonify({"error": "Stock not found"}), 404
         return jsonify(row_to_dict(row))
     finally:
         conn.close()
@@ -125,6 +134,7 @@ def delete_stock(stock_id):
                 jsonify({"error": "Stock has transactions or dividends; delete those first"}),
                 400,
             )
+        conn.execute("DELETE FROM price_history WHERE stock_id = ?", (stock_id,))
         conn.execute("DELETE FROM stocks WHERE id = ?", (stock_id,))
         conn.commit()
         return jsonify({"ok": True})

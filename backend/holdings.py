@@ -15,7 +15,7 @@ EPS = 1e-9
 def compute_holdings(conn):
     """Return (rows, totals). Each row is a per-symbol derived holding."""
     txns = conn.execute(
-        """SELECT t.*, s.symbol, s.company, s.sector, s.current_price
+        """SELECT t.*, s.symbol, s.company, s.sector, s.current_price, s.prev_price
            FROM transactions t JOIN stocks s ON s.id = t.stock_id
            ORDER BY t.date, t.id"""
     ).fetchall()
@@ -34,6 +34,7 @@ def compute_holdings(conn):
                 "company": t["company"],
                 "sector": t["sector"],
                 "current_price": t["current_price"],
+                "prev_price": t["prev_price"],
                 "shares": 0.0,
                 "invested": 0.0,
                 "realized_pl": 0.0,
@@ -62,6 +63,14 @@ def compute_holdings(conn):
         current_value = round(shares * st["current_price"], 2)
         unrealized_pl = round(current_value - invested, 2)
         return_pct = round(unrealized_pl / invested * 100, 2) if invested > EPS else 0.0
+        # day change vs the price before the latest manual update
+        has_prev = st["prev_price"] > EPS and shares > EPS
+        day_change = round((st["current_price"] - st["prev_price"]) * shares, 2) if has_prev else None
+        day_change_pct = (
+            round((st["current_price"] - st["prev_price"]) / st["prev_price"] * 100, 2)
+            if has_prev
+            else None
+        )
         rows.append(
             {
                 "stock_id": stock_id,
@@ -72,6 +81,9 @@ def compute_holdings(conn):
                 "invested": invested,
                 "avg_cost": avg_cost,
                 "current_price": st["current_price"],
+                "prev_price": st["prev_price"],
+                "day_change": day_change,
+                "day_change_pct": day_change_pct,
                 "current_value": current_value,
                 "unrealized_pl": unrealized_pl,
                 "return_pct": return_pct,
@@ -119,6 +131,59 @@ def current_shares(conn, stock_id):
     return row["shares"] or 0.0
 
 
+def value_history(conn):
+    """Portfolio value + invested over time, replaying transactions against
+    manual price snapshots. One point per BS date that has any price data;
+    stocks without a price yet are valued at cost."""
+    txns = conn.execute(
+        "SELECT stock_id, date, type, quantity, net_amount FROM transactions ORDER BY date, id"
+    ).fetchall()
+    points = conn.execute(
+        "SELECT stock_id, date, price FROM price_history ORDER BY date"
+    ).fetchall()
+    if not txns:
+        return []
+
+    dates = sorted({p["date"] for p in points} | {t["date"] for t in txns})
+    prices_by_stock = {}
+    for p in points:
+        prices_by_stock.setdefault(p["stock_id"], []).append((p["date"], p["price"]))
+
+    state = {}  # stock_id -> {shares, invested}
+    ti = 0
+    series = []
+    for d in dates:
+        while ti < len(txns) and txns[ti]["date"] <= d:
+            t = txns[ti]
+            st = state.setdefault(t["stock_id"], {"shares": 0.0, "invested": 0.0})
+            if t["type"] in ACQUIRE_TYPES:
+                st["shares"] += t["quantity"]
+                st["invested"] += t["net_amount"]
+            elif t["type"] == "SELL":
+                avg = st["invested"] / st["shares"] if st["shares"] > EPS else 0.0
+                st["invested"] -= avg * t["quantity"]
+                st["shares"] -= t["quantity"]
+                if st["shares"] <= EPS:
+                    st["shares"], st["invested"] = 0.0, 0.0
+            ti += 1
+
+        value = 0.0
+        invested = 0.0
+        for stock_id, st in state.items():
+            if st["shares"] <= EPS:
+                continue
+            invested += st["invested"]
+            last = None
+            for pd, price in prices_by_stock.get(stock_id, []):
+                if pd <= d:
+                    last = price
+                else:
+                    break
+            value += st["shares"] * last if last is not None else st["invested"]
+        series.append({"date": d, "value": round(value, 2), "invested": round(invested, 2)})
+    return series
+
+
 def compute_dashboard(conn):
     """Summary metrics + allocation data for the dashboard."""
     rows, totals = compute_holdings(conn)
@@ -135,6 +200,11 @@ def compute_dashboard(conn):
         round(total_return / totals["invested"] * 100, 2) if totals["invested"] > EPS else 0.0
     )
 
+    with_prev = [r for r in active if r["day_change"] is not None]
+    day_change = round(sum(r["day_change"] for r in with_prev), 2) if with_prev else None
+    prev_value = sum(r["prev_price"] * r["shares"] for r in with_prev)
+    day_change_pct = round(day_change / prev_value * 100, 2) if with_prev and prev_value > EPS else None
+
     return {
         "summary": {
             "invested": totals["invested"],
@@ -146,6 +216,8 @@ def compute_dashboard(conn):
             "fees_paid": totals["fees_paid"],
             "total_return": total_return,
             "total_return_pct": total_return_pct,
+            "day_change": day_change,
+            "day_change_pct": day_change_pct,
             "holdings_count": len(active),
             "stocks_count": stock_count,
             "transactions_count": txn_count,
