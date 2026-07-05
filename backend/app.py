@@ -44,4 +44,4 @@ def spa(path=""):
 
 
 if __name__ == "__main__":
-    app.run(port=18345, debug=True)
+    app.run(port=18345, debug=False)

@@ -1,3 +1,5 @@
+import math
+
 from flask import Blueprint, jsonify, request
 
 from db import get_db
@@ -22,7 +24,12 @@ def get_screener():
 
 @bp.put("/screener")
 def put_screener():
-    """Upsert one or more metric rows by (symbol, quarter)."""
+    """Upsert one or more metric rows by (symbol, quarter).
+
+    On conflict, only the fields present in the request entry are updated —
+    omitted metrics/verdict keep their stored values (an explicit null still
+    clears a field, since a present key is intentional).
+    """
     data = request.get_json(force=True)
     entries = data if isinstance(data, list) else [data]
     conn = get_db()
@@ -47,15 +54,24 @@ def put_screener():
                         values[f] = float(v)
                     except (TypeError, ValueError):
                         return jsonify({"error": f"{f} must be a number"}), 400
+                    if not math.isfinite(values[f]):
+                        return jsonify({"error": f"{f} must be a number"}), 400
+            # Update only the columns present in the entry. Column names come
+            # from the fixed METRIC_FIELDS tuple / literal "verdict", never
+            # from user input, so interpolating them into SQL is safe.
+            present = [f for f in METRIC_FIELDS if f in entry]
+            if "verdict" in entry:
+                present.append("verdict")
+            if present:
+                set_clause = ", ".join(f"{f}=excluded.{f}" for f in present)
+                on_conflict = f"ON CONFLICT(symbol, quarter) DO UPDATE SET {set_clause}"
+            else:
+                on_conflict = "ON CONFLICT(symbol, quarter) DO NOTHING"
             conn.execute(
-                """INSERT INTO screener_metrics
+                f"""INSERT INTO screener_metrics
                    (symbol, quarter, eps, pe, npl, roe, car, div_cash, div_bonus, verdict)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(symbol, quarter) DO UPDATE SET
-                     eps=excluded.eps, pe=excluded.pe, npl=excluded.npl,
-                     roe=excluded.roe, car=excluded.car,
-                     div_cash=excluded.div_cash, div_bonus=excluded.div_bonus,
-                     verdict=excluded.verdict""",
+                   {on_conflict}""",
                 (
                     symbol,
                     quarter,
@@ -86,9 +102,11 @@ def scores_with_ranks(conn):
         by_quarter.setdefault(r["quarter"], []).append(r)
     for quarter_rows in by_quarter.values():
         quarter_rows.sort(key=lambda r: -r["score"])
+        # competition ranking: equal scores share a rank (1, 1, 3, ...)
         for i, r in enumerate(quarter_rows, start=1):
-            r["rank"] = i
-    rows.sort(key=lambda r: (r["quarter"], r["rank"]))
+            prev = quarter_rows[i - 2] if i > 1 else None
+            r["rank"] = prev["rank"] if prev and prev["score"] == r["score"] else i
+    rows.sort(key=lambda r: (r["quarter"], r["rank"], r["symbol"]))
     return rows
 
 
@@ -116,6 +134,8 @@ def put_rank_history():
             try:
                 score = float(entry.get("score"))
             except (TypeError, ValueError):
+                return jsonify({"error": "score must be a number"}), 400
+            if not math.isfinite(score):
                 return jsonify({"error": "score must be a number"}), 400
             conn.execute(
                 """INSERT INTO rank_scores (symbol, quarter, score)

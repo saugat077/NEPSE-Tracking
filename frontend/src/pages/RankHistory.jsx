@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import PageHeader from '@/components/PageHeader'
-import { cn } from '@/lib/utils'
+import { cn, compareQuarters } from '@/lib/utils'
 
 function rankBadge(rank, total) {
   if (rank == null) return 'tbadge-outline'
@@ -41,7 +41,10 @@ export default function RankHistory() {
     load()
   }, [])
 
-  const quarters = useMemo(() => [...new Set(rows.map((r) => r.quarter))].sort(), [rows])
+  const quarters = useMemo(
+    () => [...new Set(rows.map((r) => r.quarter))].sort(compareQuarters),
+    [rows],
+  )
   const latest = quarters[quarters.length - 1]
   const prev = quarters[quarters.length - 2]
   const maxScore = Math.max(1, ...rows.map((r) => r.score))
@@ -64,6 +67,11 @@ export default function RankHistory() {
 
   const latestCount = rows.filter((r) => r.quarter === latest).length
 
+  const closeDialog = () => {
+    setOpen(false)
+    setForm({ symbol: '', quarter: '', score: '' })
+  }
+
   const save = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -76,8 +84,7 @@ export default function RankHistory() {
         },
       ])
       setRows(updated)
-      setOpen(false)
-      setForm({ symbol: '', quarter: '', score: '' })
+      closeDialog()
       toast.success('Score saved — ranks recomputed')
     } catch (err) {
       toast.error(err.message)
@@ -202,7 +209,7 @@ export default function RankHistory() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : closeDialog())}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-mono text-[13px] uppercase tracking-[2px]">
@@ -260,7 +267,7 @@ export default function RankHistory() {
               </p>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={closeDialog}>
                 Cancel
               </Button>
               <Button

@@ -109,7 +109,9 @@ def compute_holdings(conn):
         "unrealized_pl": round(sum(r["unrealized_pl"] for r in rows), 2),
         "realized_pl": round(sum(r["realized_pl"] for r in rows), 2),
         "fees_paid": round(sum(r["fees_paid"] for r in rows), 2),
-        "dividends_net": round(sum(r["dividends_net"] for r in rows), 2),
+        # sum ALL dividends, not per-row values — a dividend on a stock with
+        # no transactions has no row but must still count toward the total
+        "dividends_net": round(sum(dividends_by_stock.values()), 2),
         "return_pct": (
             round(sum(r["unrealized_pl"] for r in rows) / total_invested * 100, 2)
             if total_invested > EPS
@@ -119,15 +121,22 @@ def compute_holdings(conn):
     return rows, totals
 
 
-def current_shares(conn, stock_id):
-    """Shares currently held for one stock (for SELL validation)."""
-    row = conn.execute(
-        """SELECT
-             COALESCE(SUM(CASE WHEN type IN ('BUY','IPO','RIGHT','BONUS') THEN quantity
-                               WHEN type = 'SELL' THEN -quantity END), 0) AS shares
-           FROM transactions WHERE stock_id = ?""",
-        (stock_id,),
-    ).fetchone()
+def current_shares(conn, stock_id, as_of_date=None):
+    """Shares held for one stock (for SELL validation).
+
+    With as_of_date, only transactions on or before that BS date count —
+    a SELL must be funded by shares held on its own date, not by later
+    BUYs. BS dates are zero-padded text, so lexicographic compare is
+    chronological."""
+    sql = """SELECT
+               COALESCE(SUM(CASE WHEN type IN ('BUY','IPO','RIGHT','BONUS') THEN quantity
+                                 WHEN type = 'SELL' THEN -quantity END), 0) AS shares
+             FROM transactions WHERE stock_id = ?"""
+    params = [stock_id]
+    if as_of_date is not None:
+        sql += " AND date <= ?"
+        params.append(as_of_date)
+    row = conn.execute(sql, params).fetchone()
     return row["shares"] or 0.0
 
 

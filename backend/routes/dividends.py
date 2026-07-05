@@ -1,3 +1,5 @@
+import math
+
 from flask import Blueprint, jsonify, request
 
 from db import get_db
@@ -33,6 +35,9 @@ def create_dividend():
         div_rate = float(data.get("div_rate"))
         shares = float(data.get("shares"))
     except (TypeError, ValueError):
+        return jsonify({"error": "div_rate and shares must be numbers"}), 400
+    if not math.isfinite(div_rate) or not math.isfinite(shares):
+        # JSON parser accepts NaN/Infinity literals — reject them here
         return jsonify({"error": "div_rate and shares must be numbers"}), 400
     if div_rate <= 0 or shares <= 0:
         return jsonify({"error": "div_rate and shares must be greater than 0"}), 400

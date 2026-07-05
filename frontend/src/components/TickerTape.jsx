@@ -10,12 +10,16 @@ export default function TickerTape() {
   const [stocks, setStocks] = useState([])
   const location = useLocation()
 
-  // re-fetch on navigation so manual price updates show up immediately
+  // re-fetch on navigation and after any mutation so price updates show up
   useEffect(() => {
-    api
-      .get('/stocks')
-      .then((rows) => setStocks(rows.filter((s) => s.current_price > 0)))
-      .catch(() => {})
+    const loadStocks = () =>
+      api
+        .get('/stocks')
+        .then((rows) => setStocks(rows.filter((s) => s.current_price > 0)))
+        .catch(() => {})
+    loadStocks()
+    window.addEventListener('portfolio:data-changed', loadStocks)
+    return () => window.removeEventListener('portfolio:data-changed', loadStocks)
   }, [location.pathname])
 
   if (!stocks.length) return null

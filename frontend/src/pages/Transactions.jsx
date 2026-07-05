@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { api, fmt } from '@/api'
+import { api, fmt, notifyDataChanged } from '@/api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -79,13 +79,19 @@ export default function Transactions() {
       setPreview(null)
       return
     }
+    let cancelled = false
     const t = setTimeout(() => {
       api
         .post('/transactions/preview', { type: form.type, quantity: qty, price })
-        .then(setPreview)
-        .catch(() => setPreview(null))
+        .then((r) => !cancelled && setPreview(r))
+        .catch(() => !cancelled && setPreview(null))
     }, 200)
-    return () => clearTimeout(t)
+    // ignore an in-flight response once inputs change, so a slow reply for
+    // stale qty/price can't overwrite the preview for the current values
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
   }, [open, form.type, form.quantity, form.price, isBonus])
 
   const canSubmit = useMemo(() => {
@@ -99,6 +105,12 @@ export default function Transactions() {
     )
   }, [form, isBonus])
 
+  const closeDialog = () => {
+    setOpen(false)
+    setForm(EMPTY_FORM)
+    setPreview(null)
+  }
+
   const save = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -110,9 +122,8 @@ export default function Transactions() {
         price: isBonus ? 0 : parseFloat(form.price),
       })
       toast.success('Transaction saved')
-      setOpen(false)
-      setForm(EMPTY_FORM)
-      setPreview(null)
+      closeDialog()
+      notifyDataChanged()
       load()
     } catch (err) {
       toast.error(err.message)
@@ -126,6 +137,7 @@ export default function Transactions() {
       await api.delete(`/transactions/${confirmDelete.id}`)
       toast.success('Transaction deleted')
       setConfirmDelete(null)
+      notifyDataChanged()
       load()
     } catch (err) {
       toast.error(err.message)
@@ -203,13 +215,7 @@ export default function Transactions() {
 
       <Dialog
         open={open}
-        onOpenChange={(v) => {
-          setOpen(v)
-          if (!v) {
-            setForm(EMPTY_FORM)
-            setPreview(null)
-          }
-        }}
+        onOpenChange={(v) => (v ? setOpen(true) : closeDialog())}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -345,7 +351,7 @@ export default function Transactions() {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={closeDialog}>
                 Cancel
               </Button>
               <Button type="submit" disabled={!canSubmit || saving}>

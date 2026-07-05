@@ -26,6 +26,12 @@ export const api = {
   delete: (path) => request(path, { method: 'DELETE' }),
 }
 
+// Broadcast that portfolio data changed so passive views (sidebar summary,
+// price ticker) can refresh without a route change. Call after any mutation.
+export function notifyDataChanged() {
+  window.dispatchEvent(new Event('portfolio:data-changed'))
+}
+
 export const fmt = {
   money: (n) =>
     (n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),

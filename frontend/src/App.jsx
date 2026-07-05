@@ -68,6 +68,11 @@ export default function App() {
       .catch(() => {})
   }, [])
   useEffect(loadSummary, [loadSummary, location.pathname])
+  // also refresh after in-page mutations (dialogs don't change the route)
+  useEffect(() => {
+    window.addEventListener('portfolio:data-changed', loadSummary)
+    return () => window.removeEventListener('portfolio:data-changed', loadSummary)
+  }, [loadSummary])
 
   const navLinks = NAV.map(({ to, label, icon: Icon }) => (
     <NavLink key={to} to={to}>

@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import PageHeader from '@/components/PageHeader'
-import { cn } from '@/lib/utils'
+import { cn, compareQuarters } from '@/lib/utils'
 
 const METRICS = [
   { key: 'eps', label: 'EPS · RS' },
@@ -69,7 +69,10 @@ export default function Screener() {
     load()
   }, [])
 
-  const quarters = useMemo(() => [...new Set(rows.map((r) => r.quarter))].sort(), [rows])
+  const quarters = useMemo(
+    () => [...new Set(rows.map((r) => r.quarter))].sort(compareQuarters),
+    [rows],
+  )
   const active = quarter && quarters.includes(quarter) ? quarter : quarters[quarters.length - 1]
   const banks = useMemo(
     () => rows.filter((r) => r.quarter === active).sort((a, b) => a.symbol.localeCompare(b.symbol)),
@@ -113,17 +116,29 @@ export default function Screener() {
     }
   }
 
+  const closeAdd = () => {
+    setOpen(false)
+    setAddForm({ symbol: '', quarter: '' })
+  }
+
   const addEntry = async (e) => {
     e.preventDefault()
     const symbol = addForm.symbol.trim().toUpperCase()
     const q = addForm.quarter.trim()
     if (!symbol || !q) return
+    // don't PUT an existing row — a bare {symbol, quarter} would blank its
+    // metrics on the backend; just switch to it instead
+    if (byKey[`${symbol}|${q}`]) {
+      setQuarter(q)
+      closeAdd()
+      toast.info(`${symbol} · ${q} already exists`)
+      return
+    }
     try {
       const updated = await api.put('/screener', [{ symbol, quarter: q }])
       setRows(updated)
       setQuarter(q)
-      setOpen(false)
-      setAddForm({ symbol: '', quarter: '' })
+      closeAdd()
       toast.success(`${symbol} · ${q} added`)
     } catch (err) {
       toast.error(err.message)
@@ -261,7 +276,7 @@ export default function Screener() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : closeAdd())}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-mono text-[13px] uppercase tracking-[2px]">
@@ -302,7 +317,7 @@ export default function Screener() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={closeAdd}>
                 Cancel
               </Button>
               <Button type="submit">

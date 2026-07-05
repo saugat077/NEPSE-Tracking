@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { api, fmt } from '@/api'
+import { api, fmt, notifyDataChanged } from '@/api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -53,15 +53,19 @@ export default function Stocks() {
     e.preventDefault()
     setSaving(true)
     try {
-      const body = { ...form, current_price: parseFloat(form.current_price) || 0 }
       if (editing) {
-        await api.put(`/stocks/${editing.id}`, { ...editing, ...body })
-        toast.success(`${body.symbol.toUpperCase()} updated`)
+        // price is edited only via the inline LTP editor (/price endpoint),
+        // so the plain edit never sends current_price
+        const { symbol, company, sector } = form
+        await api.put(`/stocks/${editing.id}`, { symbol, company, sector })
+        toast.success(`${symbol.toUpperCase()} updated`)
       } else {
+        const body = { ...form, current_price: parseFloat(form.current_price) || 0 }
         await api.post('/stocks', body)
         toast.success(`${body.symbol.toUpperCase()} added`)
       }
       setOpen(false)
+      notifyDataChanged()
       load()
     } catch (err) {
       toast.error(err.message)
@@ -71,17 +75,23 @@ export default function Stocks() {
   }
 
   const savePrice = async () => {
-    if (priceEdit.date && !isValidBSDate(priceEdit.date)) {
+    const price = parseFloat(priceEdit.price)
+    if (!(price > 0)) {
+      toast.error('Enter a price greater than 0')
+      return
+    }
+    if (!isValidBSDate(priceEdit.date)) {
       toast.error('Price date must be a BS date like 2083-01-31')
       return
     }
     try {
       await api.put(`/stocks/${priceEdit.id}/price`, {
-        current_price: parseFloat(priceEdit.price) || 0,
-        price_updated: priceEdit.date || null,
+        current_price: price,
+        price_updated: priceEdit.date,
       })
       toast.success('Price updated')
       setPriceEdit(null)
+      notifyDataChanged()
       load()
     } catch (err) {
       toast.error(err.message)
@@ -93,6 +103,7 @@ export default function Stocks() {
       await api.delete(`/stocks/${confirmDelete.id}`)
       toast.success(`${confirmDelete.symbol} deleted`)
       setConfirmDelete(null)
+      notifyDataChanged()
       load()
     } catch (err) {
       toast.error(err.message)
@@ -254,17 +265,23 @@ export default function Stocks() {
                 placeholder="Nabil Bank Ltd."
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="current_price">Current Price (Rs)</Label>
-              <Input
-                id="current_price"
-                value={form.current_price}
-                onChange={(e) => setForm({ ...form, current_price: e.target.value })}
-                inputMode="decimal"
-                placeholder="0.00"
-                className="font-mono"
-              />
-            </div>
+            {editing ? (
+              <p className="text-xs text-[color:var(--muted)]">
+                Price is updated from the table — click the LTP value to change it.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="current_price">Current Price (Rs)</Label>
+                <Input
+                  id="current_price"
+                  value={form.current_price}
+                  onChange={(e) => setForm({ ...form, current_price: e.target.value })}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="font-mono"
+                />
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel

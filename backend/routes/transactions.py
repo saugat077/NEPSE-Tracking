@@ -1,3 +1,5 @@
+import math
+
 from flask import Blueprint, jsonify, request
 
 from db import get_db
@@ -24,6 +26,8 @@ def parse_payload(data):
         quantity = float(data.get("quantity"))
     except (TypeError, ValueError):
         return None, "quantity must be a number"
+    if not math.isfinite(quantity):  # JSON parser accepts NaN/Infinity literals
+        return None, "quantity must be a number"
     if quantity <= 0:
         return None, "quantity must be greater than 0"
 
@@ -33,6 +37,8 @@ def parse_payload(data):
         try:
             price = float(data.get("price"))
         except (TypeError, ValueError):
+            return None, "price must be a number"
+        if not math.isfinite(price):
             return None, "price must be a number"
         if price <= 0:
             return None, "price must be greater than 0"
@@ -66,6 +72,10 @@ def preview():
         price = 0.0 if txn_type == "BONUS" else float(data.get("price") or 0)
     except (TypeError, ValueError):
         return jsonify({"error": "quantity and price must be numbers"}), 400
+    if not math.isfinite(quantity) or quantity <= 0:
+        return jsonify({"error": "quantity must be greater than 0"}), 400
+    if txn_type != "BONUS" and (not math.isfinite(price) or price <= 0):
+        return jsonify({"error": "price must be greater than 0"}), 400
     return jsonify(compute_fees(txn_type, quantity, price))
 
 
@@ -85,10 +95,17 @@ def create_transaction():
             return jsonify({"error": "Stock not found — add it on the Stocks page first"}), 400
 
         if payload["type"] == "SELL":
-            held = current_shares(conn, stock["id"])
+            # validate as of the SELL's own date so a backdated SELL can't
+            # borrow shares from a later BUY
+            held = current_shares(conn, stock["id"], payload["date"])
             if payload["quantity"] > held + 1e-9:
                 return (
-                    jsonify({"error": f"Cannot sell {payload['quantity']:g} — only {held:g} shares held"}),
+                    jsonify(
+                        {
+                            "error": f"Cannot sell {payload['quantity']:g} — only "
+                            f"{held:g} shares held as of {payload['date']}"
+                        }
+                    ),
                     400,
                 )
 
@@ -127,7 +144,37 @@ def create_transaction():
 def delete_transaction(txn_id):
     conn = get_db()
     try:
+        txn = conn.execute(
+            "SELECT stock_id FROM transactions WHERE id = ?", (txn_id,)
+        ).fetchone()
+        if not txn:
+            return jsonify({"error": "Transaction not found"}), 404
+
         conn.execute("DELETE FROM transactions WHERE id = ?", (txn_id,))
+
+        # Replay what's left for this stock before committing — deleting a
+        # BUY that funds a later SELL would leave that SELL over-drawn and
+        # corrupt derived holdings, so refuse instead.
+        remaining = conn.execute(
+            """SELECT type, quantity FROM transactions
+               WHERE stock_id = ? ORDER BY date, id""",
+            (txn["stock_id"],),
+        ).fetchall()
+        shares = 0.0
+        for t in remaining:
+            shares += -t["quantity"] if t["type"] == "SELL" else t["quantity"]
+            if shares < -1e-9:
+                conn.rollback()
+                return (
+                    jsonify(
+                        {
+                            "error": "Cannot delete — a later SELL would exceed "
+                            "shares held; delete the SELL first"
+                        }
+                    ),
+                    400,
+                )
+
         conn.commit()
         return jsonify({"ok": True})
     finally:

@@ -10,7 +10,17 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fees import broker_commission, compute_fees
+from fees import broker_commission, compute_fees, sebon_fee
+
+
+def test_nabil_excel_anchor():
+    # documented Excel row: NABIL BUY 10 @ 527.50
+    f = compute_fees("BUY", 10, 527.50)
+    assert f["gross"] == 5275.00
+    assert f["commission"] == 18.99
+    assert f["sebon_fee"] == 0.79
+    assert f["dp_fee"] == 25.00
+    assert f["net_amount"] == 5319.78
 
 
 def test_buy_round_figures():
@@ -45,6 +55,25 @@ def test_commission_slabs():
     assert broker_commission(1_000_000) == 3100.00   # 0.31%
     assert broker_commission(5_000_000) == 13500.00  # 0.27%
     assert broker_commission(20_000_000) == 48000.00 # 0.24%
+
+
+def test_commission_slab_edges():
+    # an exact boundary amount stays in its slab (<= compare);
+    # one rupee past it drops to the next slab's lower rate
+    assert broker_commission(50_000) == 180.00        # 50000 * 0.36%
+    assert broker_commission(50_001) == 165.00        # 50001 * 0.33% = 165.00033
+    assert broker_commission(500_000) == 1650.00      # 500000 * 0.33%
+    assert broker_commission(500_001) == 1550.00      # 500001 * 0.31% = 1550.0031
+    assert broker_commission(2_000_000) == 6200.00    # 2000000 * 0.31%
+    assert broker_commission(2_000_001) == 5400.00    # 2000001 * 0.27% = 5400.0027
+    assert broker_commission(10_000_000) == 27000.00  # 10000000 * 0.27%
+    assert broker_commission(10_000_001) == 24000.00  # 10000001 * 0.24% = 24000.0024
+
+
+def test_half_up_rounding():
+    # Excel ROUND is half away from zero; float round() gave 1.24 / 200.47
+    assert sebon_fee(8300) == 1.25             # 8300 * 0.00015 = 1.245 exactly
+    assert broker_commission(60750) == 200.48  # 60750 * 0.0033 = 200.475 exactly
 
 
 def test_sell_deducts_fees():

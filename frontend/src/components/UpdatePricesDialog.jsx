@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { api, fmt } from '@/api'
+import { api, fmt, notifyDataChanged } from '@/api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -22,19 +22,28 @@ export default function UpdatePricesDialog({ open, onOpenChange, stocks, onSaved
   const [date, setDate] = useState('')
   const [prices, setPrices] = useState({})
   const [saving, setSaving] = useState(false)
+  const inited = useRef(false)
 
   const rows = useMemo(
     () => [...stocks].sort((a, b) => a.symbol.localeCompare(b.symbol)),
     [stocks],
   )
 
+  // Initialise once per open. A background stocks reload (e.g. after a partial
+  // save) must not re-run this and wipe the user's in-progress edits. The date
+  // starts empty on purpose — pre-filling the last date risks overwriting a
+  // prior day's price_history snapshot via the (stock_id, date) upsert.
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      inited.current = false
+      return
+    }
+    if (inited.current || !stocks.length) return
+    inited.current = true
     const init = {}
     for (const s of stocks) init[s.id] = s.current_price ? String(s.current_price) : ''
     setPrices(init)
-    const dates = stocks.map((s) => s.price_updated).filter(Boolean).sort()
-    setDate(dates[dates.length - 1] || '')
+    setDate('')
   }, [open, stocks])
 
   const changed = rows.filter((s) => {
@@ -53,20 +62,33 @@ export default function UpdatePricesDialog({ open, onOpenChange, stocks, onSaved
       return
     }
     setSaving(true)
-    try {
-      for (const s of changed) {
+    const batch = changed
+    let saved = 0
+    let failure = null
+    for (const s of batch) {
+      try {
         await api.put(`/stocks/${s.id}/price`, {
           current_price: parseFloat(prices[s.id]),
           price_updated: date,
         })
+        saved += 1
+      } catch (err) {
+        failure = { symbol: s.symbol, message: err.message }
+        break
       }
-      toast.success(`Updated ${changed.length} price${changed.length > 1 ? 's' : ''}`)
-      onOpenChange(false)
+    }
+    setSaving(false)
+    // refresh the app for whatever committed, even on partial failure
+    if (saved > 0) {
+      notifyDataChanged()
       onSaved?.()
-    } catch (err) {
-      toast.error(err.message)
-    } finally {
-      setSaving(false)
+    }
+    if (failure) {
+      // keep the dialog open so the user can retry the rows that didn't save
+      toast.error(`Saved ${saved} of ${batch.length} — ${failure.symbol} failed: ${failure.message}`)
+    } else {
+      toast.success(`Updated ${saved} price${saved > 1 ? 's' : ''}`)
+      onOpenChange(false)
     }
   }
 
